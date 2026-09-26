@@ -11,6 +11,9 @@ final class MenuBarItemImageCache: ObservableObject {
     /// The cached item images.
     @Published private(set) var images = [MenuBarItemInfo: CGImage]()
 
+    /// Committed on the main actor together with images, before publishing the update.
+    private(set) var iconTones = [MenuBarItemInfo: IceBarIconTone]()
+
     /// The screen of the cached item images.
     private(set) var screen: NSScreen?
 
@@ -212,12 +215,13 @@ final class MenuBarItemImageCache: ObservableObject {
             newImages.merge(sectionImages) { (_, new) in new }
         }
 
+        let newTones = newImages.compactMapValues { IceBarIconTone.analyze($0) }
         await MainActor.run { [newImages] in
+            for key in newImages.keys { iconTones[key] = newTones[key] }
+            self.screen = screen
+            self.menuBarHeight = screen.getMenuBarHeight()
             images.merge(newImages) { (_, new) in new }
         }
-
-        self.screen = screen
-        self.menuBarHeight = screen.getMenuBarHeight()
     }
 
     /// Updates the cache for the given sections, if necessary.

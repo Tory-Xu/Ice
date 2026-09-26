@@ -16,6 +16,7 @@
         AA0000000000000000000005 = {isa = PBXBuildFile; fileRef = AA0000000000000000000003; };
         AA000000000000000000000E = {isa = PBXBuildFile; fileRef = AA000000000000000000000C; };
         AA000000000000000000000F = {isa = PBXBuildFile; fileRef = AA000000000000000000000D; };
+        AA0000000000000000000010 = {isa = PBXBuildFile; fileRef = AA0000000000000000000011; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -25,6 +26,7 @@
         AA0000000000000000000003 /* PresentationRequest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Ice/Utilities/PresentationRequest.swift; sourceTree = SOURCE_ROOT; };
         AA000000000000000000000C /* NSWindow+WindowID.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Ice/Utilities/NSWindow+WindowID.swift"; sourceTree = SOURCE_ROOT; };
         AA000000000000000000000D /* WindowListReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Ice/Utilities/WindowListReader.swift"; sourceTree = SOURCE_ROOT; };
+        AA0000000000000000000011 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Ice/UI/IceBar/IceBarPalette.swift; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -205,7 +207,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-        AA0000000000000000000007 = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (AA000000000000000000000F, AA000000000000000000000E, AA0000000000000000000004, AA0000000000000000000005, ); runOnlyForDeploymentPostprocessing = 0; };
+        AA0000000000000000000007 = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (AA0000000000000000000010, AA000000000000000000000F, AA000000000000000000000E, AA0000000000000000000004, AA0000000000000000000005, ); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXSourcesBuildPhase section */
 
 /* Begin XCBuildConfiguration section */

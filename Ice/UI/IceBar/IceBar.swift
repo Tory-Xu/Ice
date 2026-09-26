@@ -18,8 +18,6 @@ final class IceBarPanel: NSPanel {
     var pendingSection: MenuBarSection.Name? { presentation.pendingSection }
     var presentationID: UUID? { presentation.id }
 
-    private lazy var colorManager = IceBarColorManager(iceBarPanel: self)
-
     private var cancellables = Set<AnyCancellable>()
 
     init(appState: AppState) {
@@ -184,13 +182,12 @@ final class IceBarPanel: NSPanel {
             return true
         } present: { [weak self] in
             guard let self else { return false }
-            let hostingView = IceBarHostingView(appState: appState, colorManager: colorManager, screen: screen, section: section) { [weak self] in
+            let hostingView = IceBarHostingView(appState: appState, screen: screen, section: section) { [weak self] in
                 self?.close(reason: "content action")
             }
             contentView = hostingView
             setContentSize(hostingView.fittingSize)
             updateOrigin(for: screen)
-            colorManager.updateAllProperties(with: frame, screen: screen)
             orderFrontRegardless()
             logger.info("[\(requestID)] orderFront visible=\(isVisible), frame=\(frame), display=\(self.screen?.displayID.description ?? "none")")
             if !isVisible { close(reason: "orderFront did not show panel") }
@@ -229,7 +226,6 @@ private final class IceBarHostingView: NSHostingView<AnyView> {
 
     init(
         appState: AppState,
-        colorManager: IceBarColorManager,
         screen: NSScreen,
         section: MenuBarSection.Name,
         closePanel: @escaping () -> Void
@@ -240,7 +236,6 @@ private final class IceBarHostingView: NSHostingView<AnyView> {
                 .environmentObject(appState.imageCache)
                 .environmentObject(appState.itemManager)
                 .environmentObject(appState.menuBarManager)
-                .environmentObject(colorManager)
                 .erasedToAnyView()
         )
     }
@@ -264,7 +259,7 @@ private final class IceBarHostingView: NSHostingView<AnyView> {
 
 private struct IceBarContentView: View {
     @EnvironmentObject var appState: AppState
-    @EnvironmentObject var colorManager: IceBarColorManager
+    @Environment(\.colorScheme) private var colorScheme
     @EnvironmentObject var itemManager: MenuBarItemManager
     @EnvironmentObject var imageCache: MenuBarItemImageCache
     @EnvironmentObject var menuBarManager: MenuBarManager
@@ -313,14 +308,19 @@ private struct IceBarContentView: View {
         configuration.current.hasShadow ? 0.5 : 0.33
     }
 
+    private var palette: IceBarPalette {
+        IceBarPalette.select(items.compactMap { imageCache.iconTones[$0.info] },
+                             fallback: colorScheme == .dark ? .dark : .light)
+    }
+
     var body: some View {
         ZStack {
             content
                 .frame(height: contentHeight)
                 .padding(.horizontal, horizontalPadding)
                 .padding(.vertical, verticalPadding)
-                .layoutBarStyle(appState: appState, averageColorInfo: colorManager.colorInfo)
-                .foregroundStyle(colorManager.colorInfo?.color.brightness ?? 0 > 0.67 ? .black : .white)
+                .background(Color(cgColor: palette.background))
+                .foregroundStyle(palette == .light ? Color.black : Color.white)
                 .clipShape(clipShape)
                 .shadow(color: .black.opacity(shadowOpacity), radius: 2.5)
 
@@ -329,6 +329,9 @@ private struct IceBarContentView: View {
                     .inset(by: configuration.current.borderWidth / 2)
                     .stroke(lineWidth: configuration.current.borderWidth)
                     .foregroundStyle(Color(cgColor: configuration.current.borderColor))
+            } else {
+                clipShape.inset(by: 0.5)
+                    .stroke(palette == .light ? Color.black.opacity(0.18) : Color.white.opacity(0.22), lineWidth: 1)
             }
         }
         .padding(5)
@@ -364,7 +367,7 @@ private struct IceBarContentView: View {
             ScrollView(.horizontal) {
                 HStack(spacing: 0) {
                     ForEach(items, id: \.windowID) { item in
-                        IceBarItemView(item: item, closePanel: closePanel)
+                        IceBarItemView(item: item, palette: palette, closePanel: closePanel)
                     }
                 }
             }
@@ -385,6 +388,7 @@ private struct IceBarItemView: View {
     @EnvironmentObject var itemManager: MenuBarItemManager
 
     let item: MenuBarItem
+    let palette: IceBarPalette
     let closePanel: () -> Void
 
     private var leftClickAction: () -> Void {
@@ -430,6 +434,9 @@ private struct IceBarItemView: View {
     var body: some View {
         if let image {
             Image(nsImage: image)
+                .shadow(color: imageCache.iconTones[item.info]?.needsOutline(on: palette) == true
+                        ? (palette == .light ? Color.black : Color.white).opacity(0.8) : .clear,
+                        radius: 0.75)
                 .contentShape(Rectangle())
                 .overlay {
                     IceBarItemClickView(item: item, leftClickAction: leftClickAction, rightClickAction: rightClickAction)
