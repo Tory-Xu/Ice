@@ -12,10 +12,15 @@
 		1787C4272B16890B002F50DF /* AXSwift in Frameworks */ = {isa = PBXBuildFile; productRef = 1787C4262B16890B002F50DF /* AXSwift */; };
 		17F71BB52B880B4500905CBA /* CompactSlider in Frameworks */ = {isa = PBXBuildFile; productRef = 17F71BB42B880B4500905CBA /* CompactSlider */; };
 		7127A9FF2C4886D100D99DEF /* IfritStatic in Frameworks */ = {isa = PBXBuildFile; productRef = 7127A9FE2C4886D100D99DEF /* IfritStatic */; };
+        AA0000000000000000000004 = {isa = PBXBuildFile; fileRef = AA0000000000000000000002; };
+        AA0000000000000000000005 = {isa = PBXBuildFile; fileRef = AA0000000000000000000003; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		7166832A2A767E6A006ABF84 /* Ice.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Ice.app; sourceTree = BUILT_PRODUCTS_DIR; };
+        AA0000000000000000000001 /* IceTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; path = IceTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+        AA0000000000000000000002 /* RefreshCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Ice/Utilities/RefreshCache.swift; sourceTree = SOURCE_ROOT; };
+        AA0000000000000000000003 /* PresentationRequest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Ice/Utilities/PresentationRequest.swift; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -31,6 +36,7 @@
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		71BDFBE12C978E2A00EF145F /* Ice */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (71BDFC6C2C978E2A00EF145F /* PBXFileSystemSynchronizedBuildFileExceptionSet */, ); explicitFileTypes = {}; explicitFolders = (); path = Ice; sourceTree = "<group>"; };
+        AA0000000000000000000006 /* IceTests */ = {isa = PBXFileSystemSynchronizedRootGroup; path = IceTests; sourceTree = "<group>"; };
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -53,6 +59,9 @@
 			isa = PBXGroup;
 			children = (
 				71BDFBE12C978E2A00EF145F /* Ice */,
+                AA0000000000000000000006 /* IceTests */,
+                AA0000000000000000000002 /* RefreshCache.swift */,
+                AA0000000000000000000003 /* PresentationRequest.swift */,
 				7166832B2A767E6A006ABF84 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -61,6 +70,7 @@
 			isa = PBXGroup;
 			children = (
 				7166832A2A767E6A006ABF84 /* Ice.app */,
+                AA0000000000000000000001 /* IceTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -96,6 +106,18 @@
 			productReference = 7166832A2A767E6A006ABF84 /* Ice.app */;
 			productType = "com.apple.product-type.application";
 		};
+        AA0000000000000000000008 /* IceTests */ = {
+            isa = PBXNativeTarget;
+            buildConfigurationList = AA0000000000000000000009;
+            buildPhases = (AA0000000000000000000007, );
+            buildRules = ();
+            dependencies = ();
+            fileSystemSynchronizedGroups = (AA0000000000000000000006, );
+            name = IceTests;
+            productName = IceTests;
+            productReference = AA0000000000000000000001;
+            productType = "com.apple.product-type.bundle.unit-test";
+        };
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -131,6 +153,7 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
+                AA0000000000000000000008 /* IceTests */,
 				716683292A767E6A006ABF84 /* Ice */,
 			);
 		};
@@ -176,6 +199,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+        AA0000000000000000000007 = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (AA0000000000000000000004, AA0000000000000000000005, ); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXSourcesBuildPhase section */
 
 /* Begin XCBuildConfiguration section */
@@ -364,6 +388,8 @@
 			};
 			name = Release;
 		};
+        AA000000000000000000000A = {isa = XCBuildConfiguration; buildSettings = {GENERATE_INFOPLIST_FILE = YES; PRODUCT_BUNDLE_IDENTIFIER = com.jordanbaird.IceTests; PRODUCT_NAME = "$(TARGET_NAME)"; SWIFT_VERSION = 5.0; CODE_SIGN_STYLE = Automatic; LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@loader_path/../Frameworks", ); }; name = Debug; };
+        AA000000000000000000000B = {isa = XCBuildConfiguration; buildSettings = {GENERATE_INFOPLIST_FILE = YES; PRODUCT_BUNDLE_IDENTIFIER = com.jordanbaird.IceTests; PRODUCT_NAME = "$(TARGET_NAME)"; SWIFT_VERSION = 5.0; CODE_SIGN_STYLE = Automatic; LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@loader_path/../Frameworks", ); }; name = Release; };
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -385,6 +411,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
+        AA0000000000000000000009 = {isa = XCConfigurationList; buildConfigurations = (AA000000000000000000000A, AA000000000000000000000B, ); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */

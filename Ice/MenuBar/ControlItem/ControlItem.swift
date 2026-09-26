@@ -394,6 +394,7 @@ final class ControlItem {
         else {
             return
         }
+        Logger.controlItem.info("Control item action event=\(event.type.rawValue), modifiers=\(event.modifierFlags.rawValue)")
         switch event.type {
         case .leftMouseDown, .leftMouseUp:
             if NSEvent.modifierFlags == .control {

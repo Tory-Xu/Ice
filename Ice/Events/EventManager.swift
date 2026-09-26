@@ -207,11 +207,13 @@ extension EventManager {
             return
         }
 
+        let presentationID = appState.menuBarManager.iceBarPanel.presentationID
         Task {
             let initialSpaceID = Bridging.activeSpaceID
 
             // Sleep for a bit to give the window under the mouse a chance to focus.
             try? await Task.sleep(for: .seconds(0.25))
+            guard appState.menuBarManager.iceBarPanel.presentationID == presentationID else { return }
 
             // If clicking caused a space change, don't bother with the window check.
             if Bridging.activeSpaceID != initialSpaceID {

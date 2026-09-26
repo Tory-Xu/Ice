@@ -229,7 +229,8 @@ final class MenuBarItemImageCache: ObservableObject {
         let isIceBarPresented = await appState.navigationState.isIceBarPresented
         let isSearchPresented = await appState.navigationState.isSearchPresented
 
-        if !isIceBarPresented && !isSearchPresented {
+        let isIceBarPreparing = await appState.menuBarManager.iceBarPanel.pendingSection != nil
+        if !isIceBarPresented && !isIceBarPreparing && !isSearchPresented {
             guard await appState.navigationState.isAppFrontmost else {
                 logSkippingCache(reason: "Ice Bar not visible, app not frontmost")
                 return

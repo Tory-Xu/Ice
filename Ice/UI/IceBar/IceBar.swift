@@ -11,7 +11,12 @@ import SwiftUI
 final class IceBarPanel: NSPanel {
     private weak var appState: AppState?
 
-    private(set) var currentSection: MenuBarSection.Name?
+    private let presentation = PresentationRequest<MenuBarSection.Name>()
+    private let logger = Logger(category: "IceBar")
+
+    var currentSection: MenuBarSection.Name? { presentation.currentSection }
+    var pendingSection: MenuBarSection.Name? { presentation.pendingSection }
+    var presentationID: UUID? { presentation.id }
 
     private lazy var colorManager = IceBarColorManager(iceBarPanel: self)
 
@@ -49,8 +54,8 @@ final class IceBarPanel: NSPanel {
             NSWorkspace.shared.notificationCenter.publisher(for: NSWorkspace.activeSpaceDidChangeNotification),
             NotificationCenter.default.publisher(for: NSApplication.didChangeScreenParametersNotification)
         )
-        .sink { [weak self] _ in
-            self?.close()
+        .sink { [weak self] notification in
+            self?.close(reason: notification.name.rawValue)
         }
         .store(in: &c)
 
@@ -74,7 +79,7 @@ final class IceBarPanel: NSPanel {
                     else {
                         return
                     }
-                    close()
+                    close(reason: "system menu bar hidden")
                 }
                 .store(in: &c)
         }
@@ -151,41 +156,64 @@ final class IceBarPanel: NSPanel {
         setFrameOrigin(getOrigin(for: appState.settingsManager.generalSettingsManager.iceBarLocation))
     }
 
-    func show(section: MenuBarSection.Name, on screen: NSScreen) async {
-        guard let appState else {
-            return
+    func show(section: MenuBarSection.Name, on screen: NSScreen, requestID: UUID = UUID(), didPresent: @escaping () -> Void = {}) {
+        guard let appState else { return }
+        close(reason: "superseded by \(requestID)")
+        logger.info("[\(requestID)] preparing \(section.logString), display=\(screen.displayID), screen=\(screen.frame)")
+        presentation.start(id: requestID, section: section) { [weak self] id in
+            guard let self else { return false }
+            let start = ContinuousClock.now
+            logger.debug("[\(id)] item cache started")
+            await appState.itemManager.cacheItemsIfNeeded(requestID: id)
+            guard presentation.isCurrent(id) else {
+                logger.debug("[\(id)] cancelled after item cache")
+                return false
+            }
+            if ScreenCapture.cachedCheckPermissions() {
+                let imageStart = ContinuousClock.now
+                logger.debug("[\(id)] image cache started")
+                await appState.imageCache.updateCache(sections: [section])
+                logger.debug("[\(id)] image cache finished in \(imageStart.duration(to: .now))")
+                guard presentation.isCurrent(id) else {
+                    logger.debug("[\(id)] cancelled after image cache")
+                    return false
+                }
+            }
+            logger.info("[\(id)] preparation finished in \(start.duration(to: .now))")
+            return true
+        } present: { [weak self] in
+            guard let self else { return false }
+            contentView = IceBarHostingView(appState: appState, colorManager: colorManager, screen: screen, section: section) { [weak self] in
+                self?.close(reason: "content action")
+            }
+            updateOrigin(for: screen)
+            colorManager.updateAllProperties(with: frame, screen: screen)
+            orderFrontRegardless()
+            logger.info("[\(requestID)] orderFront visible=\(isVisible), frame=\(frame), display=\(self.screen?.displayID.description ?? "none")")
+            if !isVisible { close(reason: "orderFront did not show panel") }
+            return isVisible
+        } didPresent: {
+            appState.navigationState.isIceBarPresented = true
+            for section in appState.menuBarManager.sections {
+                section.controlItem.state = .hideItems
+            }
+            didPresent()
         }
+    }
 
-        // Important that we set the navigation state and current section before updating the cache.
-        appState.navigationState.isIceBarPresented = true
-        currentSection = section
-
-        await appState.itemManager.cacheItemsIfNeeded()
-
-        if ScreenCapture.cachedCheckPermissions() {
-            await appState.imageCache.updateCache()
+    func close(reason: String) {
+        logger.info("[\(presentation.id?.uuidString ?? "none")] close reason=\(reason), visible=\(isVisible), preparing=\(pendingSection != nil)")
+        presentation.cancel()
+        for section in appState?.menuBarManager.sections ?? [] {
+            section.stopRehideChecks()
         }
-
-        contentView = IceBarHostingView(appState: appState, colorManager: colorManager, screen: screen, section: section) { [weak self] in
-            self?.close()
-        }
-
-        updateOrigin(for: screen)
-
-        // Color manager must be updated after updating the panel's origin, but before it is shown.
-        //
-        // Color manager handles frame changes automatically, but does so on the main queue, so we
-        // need to update manually once before showing the panel to prevent the color from flashing.
-        colorManager.updateAllProperties(with: frame, screen: screen)
-
-        orderFrontRegardless()
+        super.close()
+        contentView = nil
+        appState?.navigationState.isIceBarPresented = false
     }
 
     override func close() {
-        super.close()
-        contentView = nil
-        currentSection = nil
-        appState?.navigationState.isIceBarPresented = false
+        close(reason: "window close")
     }
 }
 

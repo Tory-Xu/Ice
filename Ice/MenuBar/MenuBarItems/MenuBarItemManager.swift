@@ -104,7 +104,7 @@ final class MenuBarItemManager: ObservableObject {
     private var cancellables = Set<AnyCancellable>()
 
     /// Cached window identifiers for the most recent items.
-    private var cachedItemWindowIDs = [CGWindowID]()
+    private let refreshCache = RefreshCache<[CGWindowID], ItemCache>(emptyValue: ItemCache())
 
     /// Context values for the current temporarily shown items.
     private var tempShownItemContexts = [TempShownItemContext]()
@@ -232,18 +232,13 @@ extension MenuBarItemManager {
         Logger.itemManager.warning("\(item.logString) was not cached")
     }
 
-    /// Logs a reason for skipping the cache.
-    private func logSkippingCache(reason: String) {
-        Logger.itemManager.debug("Skipping menu bar item cache as \(reason)")
-    }
-
     /// Caches the given menu bar items, without checking whether the control
     /// items are in the correct order.
     private func uncheckedCacheItems(
         hiddenControlItem: MenuBarItem,
         alwaysHiddenControlItem: MenuBarItem?,
         otherItems: [MenuBarItem]
-    ) {
+    ) -> ItemCache {
         Logger.itemManager.debug("Caching menu bar items")
 
         let predicates = Predicates.sectionPredicates(
@@ -307,61 +302,76 @@ extension MenuBarItemManager {
             }
         }
 
-        itemCache = cache
+        return cache
     }
 
     /// Caches the current menu bar items if needed, ensuring that the control
     /// items are in the correct order.
-    func cacheItemsIfNeeded() async {
+    func cacheItemsIfNeeded(requestID: UUID? = nil) async {
+        let trace = requestID?.uuidString ?? UUID().uuidString
+        let start = ContinuousClock.now
+        defer { Logger.itemManager.debug("[\(trace)] item cache finished in \(start.duration(to: .now))") }
         do {
             try await waitForItemsToStopMoving(timeout: .seconds(1))
-        } catch is TaskTimeoutError {
-            logSkippingCache(reason: "an item is currently being moved")
+        } catch is CancellationError {
             return
         } catch {
-            guard !itemHasRecentlyMoved else {
-                logSkippingCache(reason: "an item was recently moved")
-                return
-            }
+            Logger.itemManager.debug("[\(trace)] item cache wait failed: \(error)")
+            return
         }
-
+        guard !Task.isCancelled else { return }
+        Logger.itemManager.debug("[\(trace)] movement wait: \(start.duration(to: .now))")
         let itemWindowIDs = Bridging.getWindowList(option: [.menuBarItems, .activeSpace])
-        if cachedItemWindowIDs == itemWindowIDs {
-            logSkippingCache(reason: "item windows have not changed")
-            return
-        } else {
-            cachedItemWindowIDs = itemWindowIDs
-        }
-
-        var items = MenuBarItem.getMenuBarItems(onScreenOnly: false, activeSpaceOnly: true)
-
-        let hiddenControlItem = items.firstIndex(matching: .hiddenControlItem).map { items.remove(at: $0) }
-        let alwaysHiddenControlItem = items.firstIndex(matching: .alwaysHiddenControlItem).map { items.remove(at: $0) }
-
-        guard let hiddenControlItem else {
-            Logger.itemManager.warning("Missing control item for hidden section")
-            Logger.itemManager.debug("Clearing menu bar item cache")
-            itemCache.clear()
-            return
-        }
-
         do {
-            if let alwaysHiddenControlItem {
-                try await enforceControlItemOrder(
-                    hiddenControlItem: hiddenControlItem,
-                    alwaysHiddenControlItem: alwaysHiddenControlItem
-                )
+            try await refreshCache.refresh(key: itemWindowIDs) {
+                let readStart = ContinuousClock.now
+                func readItems() throws -> [MenuBarItem] {
+                    try itemWindowIDs.map { id in
+                        guard let item = MenuBarItem(windowID: id) else {
+                            throw CacheError.unreadableWindow(id)
+                        }
+                        return item
+                    }.filter { $0.title != "" }.sortedByOrderInMenuBar()
+                }
+                var items = try readItems()
+                Logger.itemManager.debug("[\(trace)] read \(items.count) items / \(itemWindowIDs.count) windows in \(readStart.duration(to: .now))")
+                guard var hidden = items.firstIndex(matching: .hiddenControlItem).map({ items.remove(at: $0) }) else {
+                    throw CacheError.missingHiddenControlItem
+                }
+                var alwaysHidden = items.firstIndex(matching: .alwaysHiddenControlItem).map { items.remove(at: $0) }
+                let orderStart = ContinuousClock.now
+                if let control = alwaysHidden {
+                    try await enforceControlItemOrder(hiddenControlItem: hidden, alwaysHiddenControlItem: control)
+                    try Task.checkCancellation()
+                    if hidden.frame.maxX <= control.frame.minX {
+                        // Movement may have been deferred. Never commit the pre-move geometry.
+                        items = try readItems()
+                        guard
+                            let updatedHidden = items.firstIndex(matching: .hiddenControlItem).map({ items.remove(at: $0) }),
+                            let updatedAlwaysHidden = items.firstIndex(matching: .alwaysHiddenControlItem).map({ items.remove(at: $0) }),
+                            updatedAlwaysHidden.frame.maxX <= updatedHidden.frame.minX
+                        else {
+                            throw CacheError.invalidControlItemOrder
+                        }
+                        hidden = updatedHidden
+                        alwaysHidden = updatedAlwaysHidden
+                    }
+                }
+                try Task.checkCancellation()
+                Logger.itemManager.debug("[\(trace)] control order: \(orderStart.duration(to: .now))")
+                return uncheckedCacheItems(hiddenControlItem: hidden, alwaysHiddenControlItem: alwaysHidden, otherItems: items)
             }
-            uncheckedCacheItems(
-                hiddenControlItem: hiddenControlItem,
-                alwaysHiddenControlItem: alwaysHiddenControlItem,
-                otherItems: items
-            )
+            Logger.itemManager.debug("[\(trace)] cache valid=\(refreshCache.key != nil), items=\(refreshCache.value.allItems.count)")
         } catch {
-            Logger.itemManager.error("Error enforcing control item order: \(error)")
-            Logger.itemManager.debug("Clearing menu bar item cache")
-            itemCache.clear()
+            Logger.itemManager.warning("[\(trace)] item cache invalid; next refresh will retry: \(error)")
         }
+        itemCache = refreshCache.value
+    }
+
+    private enum CacheError: Error {
+        case missingHiddenControlItem
+        case unreadableWindow(CGWindowID)
+        case invalidControlItemOrder
     }
 }
 

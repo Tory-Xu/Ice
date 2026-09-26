@@ -98,6 +98,10 @@ final class MenuBarSection {
         }
     }
 
+    private var isPreparing: Bool {
+        iceBarPanel?.pendingSection == (name == .alwaysHidden ? .alwaysHidden : .hidden)
+    }
+
     /// A Boolean value that indicates whether the section is enabled.
     var isEnabled: Bool {
         if case .visible = name {
@@ -128,10 +132,12 @@ final class MenuBarSection {
     }
 
     /// Shows the section.
-    func show() {
+    func show(requestID: UUID = UUID()) {
+        Logger(category: "MenuBarSection").info("[\(requestID)] show \(name.logString), hidden=\(isHidden), useIceBar=\(useIceBar)")
         guard
             let appState,
-            isHidden
+            isHidden,
+            !isPreparing
         else {
             return
         }
@@ -141,40 +147,31 @@ final class MenuBarSection {
             return
         }
         switch name {
-        case .visible where useIceBar, .hidden where useIceBar:
-            Task {
-                if let screenForIceBar {
-                    await iceBarPanel?.show(section: .hidden, on: screenForIceBar)
-                }
-                for section in appState.menuBarManager.sections {
-                    section.controlItem.state = .hideItems
-                }
+        case _ where useIceBar:
+            guard let screenForIceBar else {
+                Logger(category: "MenuBarSection").warning("[\(requestID)] no screen for Ice Bar")
+                return
             }
-        case .alwaysHidden where useIceBar:
-            Task {
-                if let screenForIceBar {
-                    await iceBarPanel?.show(section: .alwaysHidden, on: screenForIceBar)
-                }
-                for section in appState.menuBarManager.sections {
-                    section.controlItem.state = .hideItems
-                }
+            iceBarPanel?.show(section: name == .alwaysHidden ? .alwaysHidden : .hidden, on: screenForIceBar, requestID: requestID) { [weak self] in
+                self?.startRehideChecks()
             }
+            return
         case .visible:
-            iceBarPanel?.close()
+            iceBarPanel?.close(reason: "section \(name.logString) visibility change")
             guard let hiddenSection = appState.menuBarManager.section(withName: .hidden) else {
                 return
             }
             controlItem.state = .showItems
             hiddenSection.controlItem.state = .showItems
         case .hidden:
-            iceBarPanel?.close()
+            iceBarPanel?.close(reason: "section \(name.logString) visibility change")
             guard let visibleSection = appState.menuBarManager.section(withName: .visible) else {
                 return
             }
             controlItem.state = .showItems
             visibleSection.controlItem.state = .showItems
         case .alwaysHidden:
-            iceBarPanel?.close()
+            iceBarPanel?.close(reason: "section \(name.logString) visibility change")
             guard
                 let hiddenSection = appState.menuBarManager.section(withName: .hidden),
                 let visibleSection = appState.menuBarManager.section(withName: .visible)
@@ -189,14 +186,14 @@ final class MenuBarSection {
     }
 
     /// Hides the section.
-    func hide() {
+    func hide(reason: String = #function) {
         guard
             let appState,
-            !isHidden
+            !isHidden || isPreparing
         else {
             return
         }
-        iceBarPanel?.close()
+        iceBarPanel?.close(reason: "section \(name.logString): \(reason)")
         switch name {
         case _ where useIceBar:
             for section in appState.menuBarManager.sections {
@@ -230,9 +227,13 @@ final class MenuBarSection {
     }
 
     /// Toggles the visibility of the section.
-    func toggle() {
-        if isHidden {
-            show()
+    func toggle(source: String = #function) {
+        let requestID = UUID()
+        Logger(category: "MenuBarSection").info("[\(requestID)] toggle source=\(source), section=\(name.logString), hidden=\(isHidden), preparing=\(iceBarPanel?.pendingSection != nil)")
+        if isPreparing {
+            hide(reason: "[\(requestID)] toggle cancelled preparation")
+        } else if isHidden {
+            show(requestID: requestID)
         } else {
             hide()
         }
@@ -251,6 +252,7 @@ final class MenuBarSection {
             return
         }
 
+        let presentationID = iceBarPanel?.presentationID
         rehideMonitor = UniversalEventMonitor(mask: .mouseMoved) { [weak self] event in
             guard
                 let self,
@@ -271,12 +273,14 @@ final class MenuBarSection {
                             return
                         }
                         if NSEvent.mouseLocation.y < screen.visibleFrame.maxY {
-                            Task {
-                                await self.hide()
+                            Task { @MainActor in
+                                guard self.iceBarPanel?.presentationID == presentationID else { return }
+                                self.hide(reason: "timed auto rehide")
                             }
                         } else {
-                            Task {
-                                await self.startRehideChecks()
+                            Task { @MainActor in
+                                guard self.iceBarPanel?.presentationID == presentationID else { return }
+                                self.startRehideChecks()
                             }
                         }
                     }
@@ -292,7 +296,7 @@ final class MenuBarSection {
     }
 
     /// Stops running checks to determine when to rehide the section.
-    private func stopRehideChecks() {
+    func stopRehideChecks() {
         rehideTimer?.invalidate()
         rehideMonitor?.stop()
         rehideTimer = nil
