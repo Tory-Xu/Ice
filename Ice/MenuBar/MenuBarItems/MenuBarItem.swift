@@ -226,10 +226,20 @@ private extension MenuBarItemInfo {
     /// it is a valid menu bar item window. Only call this initializer if you are
     /// certain that the window is valid.
     init(uncheckedItemWindow itemWindow: WindowInfo) {
-        if let bundleIdentifier = itemWindow.owningApplication?.bundleIdentifier {
-            self.namespace = Namespace(bundleIdentifier)
+        let ownerNamespace = Namespace(itemWindow.owningApplication?.bundleIdentifier)
+        if #available(macOS 26.0, *), ownerNamespace == .controlCenter, let title = itemWindow.title {
+            if ControlItem.Identifier(rawValue: title) != nil {
+                // AppKit's remote status items keep Ice's reserved control titles.
+                self.namespace = .ice
+            } else if title.hasPrefix("Item-") {
+                // Remote items from different apps can all be named "Item-0".
+                // Keep their images and temporary movement state distinct per window.
+                self.namespace = Namespace("\(ownerNamespace.rawValue).window-\(itemWindow.windowID)")
+            } else {
+                self.namespace = ownerNamespace
+            }
         } else {
-            self.namespace = .null
+            self.namespace = ownerNamespace
         }
         if let title = itemWindow.title {
             self.title = title

@@ -63,10 +63,14 @@ final class ControlItem {
 
     /// The identifier of the control item's window.
     var windowID: CGWindowID? {
-        guard let window else {
-            return nil
+        if let windowID = window?.cgWindowID {
+            return windowID
         }
-        return CGWindowID(window.windowNumber)
+        guard #available(macOS 26.0, *) else { return nil }
+        // A remotely hosted status item may have no local AppKit window number.
+        let info = MenuBarItemInfo(namespace: .ice, title: identifier.rawValue)
+        return MenuBarItem.getMenuBarItems(onScreenOnly: false, activeSpaceOnly: true)
+            .first { $0.info == info }?.windowID
     }
 
     /// A Boolean value that indicates whether the control item serves as

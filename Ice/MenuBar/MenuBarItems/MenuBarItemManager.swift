@@ -326,12 +326,11 @@ extension MenuBarItemManager {
             try await refreshCache.refresh(key: itemWindowIDs) {
                 let readStart = ContinuousClock.now
                 func readItems() throws -> [MenuBarItem] {
-                    try itemWindowIDs.map { id in
-                        guard let item = MenuBarItem(windowID: id) else {
-                            throw CacheError.unreadableWindow(id)
-                        }
-                        return item
-                    }.filter { $0.title != "" }.sortedByOrderInMenuBar()
+                    try WindowListReader.read(
+                        windowIDs: itemWindowIDs,
+                        readWindow: WindowInfo.init(windowID:),
+                        makeItem: MenuBarItem.init(itemWindow:)
+                    ).filter { $0.title != "" }.sortedByOrderInMenuBar()
                 }
                 var items = try readItems()
                 Logger.itemManager.debug("[\(trace)] read \(items.count) items / \(itemWindowIDs.count) windows in \(readStart.duration(to: .now))")
@@ -370,7 +369,6 @@ extension MenuBarItemManager {
 
     private enum CacheError: Error {
         case missingHiddenControlItem
-        case unreadableWindow(CGWindowID)
         case invalidControlItemOrder
     }
 }

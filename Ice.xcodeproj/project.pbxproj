@@ -14,6 +14,8 @@
 		7127A9FF2C4886D100D99DEF /* IfritStatic in Frameworks */ = {isa = PBXBuildFile; productRef = 7127A9FE2C4886D100D99DEF /* IfritStatic */; };
         AA0000000000000000000004 = {isa = PBXBuildFile; fileRef = AA0000000000000000000002; };
         AA0000000000000000000005 = {isa = PBXBuildFile; fileRef = AA0000000000000000000003; };
+        AA000000000000000000000E = {isa = PBXBuildFile; fileRef = AA000000000000000000000C; };
+        AA000000000000000000000F = {isa = PBXBuildFile; fileRef = AA000000000000000000000D; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -21,6 +23,8 @@
         AA0000000000000000000001 /* IceTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; path = IceTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
         AA0000000000000000000002 /* RefreshCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Ice/Utilities/RefreshCache.swift; sourceTree = SOURCE_ROOT; };
         AA0000000000000000000003 /* PresentationRequest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Ice/Utilities/PresentationRequest.swift; sourceTree = SOURCE_ROOT; };
+        AA000000000000000000000C /* NSWindow+WindowID.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Ice/Utilities/NSWindow+WindowID.swift"; sourceTree = SOURCE_ROOT; };
+        AA000000000000000000000D /* WindowListReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Ice/Utilities/WindowListReader.swift"; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -62,6 +66,8 @@
                 AA0000000000000000000006 /* IceTests */,
                 AA0000000000000000000002 /* RefreshCache.swift */,
                 AA0000000000000000000003 /* PresentationRequest.swift */,
+                AA000000000000000000000D /* WindowListReader.swift */,
+                AA000000000000000000000C /* NSWindow+WindowID.swift */,
 				7166832B2A767E6A006ABF84 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -199,7 +205,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-        AA0000000000000000000007 = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (AA0000000000000000000004, AA0000000000000000000005, ); runOnlyForDeploymentPostprocessing = 0; };
+        AA0000000000000000000007 = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (AA000000000000000000000F, AA000000000000000000000E, AA0000000000000000000004, AA0000000000000000000005, ); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXSourcesBuildPhase section */
 
 /* Begin XCBuildConfiguration section */

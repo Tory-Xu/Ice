@@ -72,7 +72,8 @@ final class IceBarPanel: NSPanel {
                         // Only continue if the menu bar is automatically hidden, as Ice
                         // can't currently display its menu bar items.
                         appState.menuBarManager.isMenuBarHiddenBySystemUserDefaults,
-                        let info = window.flatMap({ WindowInfo(windowID: CGWindowID($0.windowNumber)) }),
+                        let windowID = window?.cgWindowID,
+                        let info = WindowInfo(windowID: windowID),
                         // Window being offscreen means the menu bar is currently hidden.
                         // Close the bar, as things will start to look weird if we don't.
                         !info.isOnScreen
@@ -183,9 +184,11 @@ final class IceBarPanel: NSPanel {
             return true
         } present: { [weak self] in
             guard let self else { return false }
-            contentView = IceBarHostingView(appState: appState, colorManager: colorManager, screen: screen, section: section) { [weak self] in
+            let hostingView = IceBarHostingView(appState: appState, colorManager: colorManager, screen: screen, section: section) { [weak self] in
                 self?.close(reason: "content action")
             }
+            contentView = hostingView
+            setContentSize(hostingView.fittingSize)
             updateOrigin(for: screen)
             colorManager.updateAllProperties(with: frame, screen: screen)
             orderFrontRegardless()
